@@ -11,23 +11,33 @@ from functools import reduce
 from collections import OrderedDict
 from collections import namedtuple
 
-class ImportData:
-    def __init__(self, data_csv,base_name, headings_list):
-        self = pd.read_csv(data_csv, sep='\t', skiprows=1, names=headings_list)
+class talkLife:
+    def __init__(self, headings_list, data_csv,base_name):
+        self = pd.read_csv(data_csv, header=None, names=None)
         self=self.fillna(method='ffill',axis=0)
-        CGM = createDataArrayCGM(self)
-        CARB = createDataArrayCarb(self)
-        INS = createDataArrayInsulin(self)
 
-        bigData = conCat([CGM,CARB,INS])
-        # print("---CGM----")
-        # print(CGM)
-        # print("---CARB---")
-        # print(CARB)
-        # print("---INS---")
-        # print(INS)
-        # print("---all---")
-        # print(bigData)
 
-        #save2csv(CGM,base_name+'_cgm')
-        save2csv(bigData,base_name+'_all')
+        #bigData = conCat([CGM,CARB,INS])
+
+        #save2csv(bigData,base_name+'_all')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print('Useage:',sys.argv[0],'[heading_file_name] [data_file_name] [base_name]')
+        sys.exit(2)
+
+    heading_file = sys.argv[1]
+    file_name = sys.argv[2]
+    base_name = sys.argv[3]
+
+    with open(heading_file) as csvfile:
+        readHeading = csv.reader(csvfile)
+        headings = []
+        for item in csvfile:
+            headings.append(item)
+
+    print(headings)
+
+
+    Data = talkLife(heading_name,file_name,base_name)
