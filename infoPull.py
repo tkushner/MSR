@@ -12,8 +12,8 @@ from collections import OrderedDict
 from collections import namedtuple
 
 class talkLife:
-    def __init__(self, headings_list, data_csv,base_name):
-        self = pd.read_csv(data_csv, header=None, names=headings_list)
+    def __init__(self,data_csv,base_name):
+        self = pd.read_csv(data_csv)
         self=self.fillna(method='ffill',axis=0)
 
         print(self)
@@ -21,24 +21,25 @@ class talkLife:
 
         #save2csv(bigData,base_name+'_all')
 
-def pullTimeZones(dataFrame):
-    
+# def splitPosts(dataFrame):
+#
+#     for Idx in dataFrame.QiD.unique():
+
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print('Useage:',sys.argv[0],'[heading_file_name] [data_file_name] [base_name]')
+    if len(sys.argv) < 3:
+        print('Useage:',sys.argv[0],'[data_file_name] [base_name]')
         sys.exit(2)
 
-    heading_file = sys.argv[1]
-    file_name = sys.argv[2]
-    base_name = sys.argv[3]
+    file_name = sys.argv[1]
+    base_name = sys.argv[2]
 
-    with open(heading_file,'r') as csvfile:
-        headings = []
-        for item in csvfile:
-            headings.append(item.rstrip()) #rstrip removes the newline character
-        csvfile.close()
-    print(headings)
+    # with open(heading_file,'r') as csvfile:
+    #     headings = []
+    #     for item in csvfile:
+    #         headings.append(item.rstrip()) #rstrip removes the newline character
+    #     csvfile.close()
+    # print(headings)
 
 
-    Data = talkLife(headings,file_name,base_name)
+    Data = talkLife(file_name,base_name)
