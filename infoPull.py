@@ -3,6 +3,8 @@ import csv
 import sys
 import math
 import scipy
+import scipy.stats as spStats
+import statistics as stats
 import numpy as np
 import datetime as datetime
 import dateutil.parser
@@ -11,32 +13,21 @@ from functools import reduce
 from collections import OrderedDict
 from collections import namedtuple
 
-#bokeh
-from bokeh.core.properties import field
-from bokeh.io import curdoc
-from bokeh.layouts import layout
-from bokeh.models import (ColumnDataSource, HoverTool, SingleIntervalTicker,
-                          Slider, Button, Label, CategoricalColorMapper)
-from bokeh.palettes import Spectral6
-from bokeh.plotting import figure
-
-#NLP
-from nltk.tokenize import sent_tokenize, word_tokenize
-import warnings
-import gensim
-from gensim.models import Word2Vec
-
 class talkLife:
     def __init__(self,data_csv,base_name):
         self = pd.read_csv(data_csv)
         #self=self.fillna(method='ffill',axis=0)
 
-        bigFrame = splitPosts(self,base_name)
-        plotBokeh(bigFrame)
-        stdFrame = standardize(bigFrame)
+        #bigFrame = splitPosts(self,base_name)
+        #stdFrame = standardize(bigFrame)
         #bigData = conCat([CGM,CARB,INS])
 
         #save2csv(bigData,base_name+'_all')
+
+        #splitTZ = splitTimeZones(self)
+        #save2csv(splitTZ,base_name)
+
+        save2csv(self[['QiD','TDiff','QLocTZ','ALocTZ','DiffTZ']].set_index('QiD'),'TZdata_raw')
 
 def splitPosts(dataFrame,base_name):
     bigFrame = pd.DataFrame(columns=["_date"])
@@ -58,6 +49,38 @@ def splitPosts(dataFrame,base_name):
     bigFrame.fillna(value=0,inplace=True)
     return bigFrame
 
+def splitTimeZones(df):
+    #gets stats post-by-post
+    tzStats = pd.DataFrame(columns=["QiD","maxDiff","minDiff","modeDiff","stdDiff","meanDiff","OGtz","MeanTSincePost","MaxTSincePost","MinTSincePost"])
+    for Idx in df.QiD.unique():
+        tzValues = df.loc[df['QiD']==Idx,'DiffTZ'].values
+        maxDiff = max(tzValues)
+        minDiff = min(tzValues)
+
+        if minDiff == maxDiff:
+            stdDiff = 0
+            modeDiff = minDiff
+            meanDiff = 0
+        else:
+            stdDiff = stats.stdev(tzValues)
+            modeDiff = spStats.mode(tzValues)[0]
+            meanDiff = stats.mean(tzValues)
+
+        OGtz = stats.mean(df.loc[df['QiD']==Idx,'QLocTZ'].values)
+
+        tSincePost = df.loc[df['QiD']==Idx,'TDiff'].values
+        MeanTSincePost = stats.mean(tSincePost)
+        MinTSincePost = min(tSincePost)
+        MaxTSincePost = max(tSincePost)
+
+        newData={"QiD":[Idx],"maxDiff":[maxDiff],"minDiff":[minDiff],"meanDiff":[meanDiff],"modeDiff":[modeDiff],"stdDiff":[stdDiff],"OGtz":[OGtz],"MeanTSincePost":[MeanTSincePost],"MinTSincePost":[MinTSincePost],"MaxTSincePost":[MaxTSincePost]}
+        newVal = pd.DataFrame(newData).set_index("QiD", drop=False)
+        newVal = newVal.astype('float64')
+        tzStats=tzStats.append(newVal,sort=True)
+
+    print(tzStats.modeDiff)
+    return(tzStats)
+
 def standardize(dataFrame):
     stdFrame = dataFrame
     stdFrame['totalPosts'] = dataFrame.sum(axis=1)
@@ -66,106 +89,6 @@ def standardize(dataFrame):
 
 def save2csv(dataFrame,file_name):
     dataFrame.to_csv (file_name+'.csv', index = True, header=True)
-
-def plotBokeh(dataFrame):
-    #x = dataFrame.index.values
-    y_dat = dataFrame.iloc[0,:].values
-    x_dat = np.linspace(1,len(y_dat),num=len(y_dat))
-
-
-    N = len(x_dat)
-
-    colors = ["#%02x%02x%02x" % (int(r), int(g), 150) for r, g in zip(x_dat, y_dat)]
-
-    source = ColumnDataSource(data=dict(xVals=x_dat,
-                                    yVals=y_dat,
-                                    radii=y_dat*0.5,
-                                    moods=dataFrame.columns.values, color=bp.viridis(N)))
-
-
-    TOOLS="hover,crosshair,pan,wheel_zoom,zoom_in,zoom_out,box_zoom,undo,redo,reset,tap,save,box_select,poly_select,lasso_select,"
-
-    p = figure(tools=TOOLS)
-
-    p.scatter(x='xVals', y='yVals', radius='radii', source=source,
-              fill_color='color', fill_alpha=0.6,
-              line_color=None)
-
-    labels = LabelSet(x='xVals', y='yVals', text='moods', level='glyph',
-              x_offset=5, y_offset=5, source=source)
-    p.add_layout(labels)
-    output_file("color_scatter.html", title="color_scatter.py example")
-
-    show(p)
-
-def plotBokeh_2(data):
-
-    source = ColumnDataSource(data=data[years[0]])
-
-    plot = figure(x_range=(1, 9), y_range=(20, 100), title='Gapminder Data', plot_height=300)
-    plot.xaxis.ticker = SingleIntervalTicker(interval=1)
-    plot.xaxis.axis_label = "Children per woman (total fertility)"
-    plot.yaxis.ticker = SingleIntervalTicker(interval=20)
-    plot.yaxis.axis_label = "Life expectancy at birth (years)"
-
-    label = Label(x=1.1, y=18, text=str(years[0]), text_font_size='70pt', text_color='#eeeeee')
-    plot.add_layout(label)
-
-    color_mapper = CategoricalColorMapper(palette=Spectral6, factors=regions_list)
-    plot.circle(
-        x='fertility',
-        y='life',
-        size='population',
-        source=source,
-        fill_color={'field': 'region', 'transform': color_mapper},
-        fill_alpha=0.8,
-        line_color='#7c7e71',
-        line_width=0.5,
-        line_alpha=0.5,
-        legend=field('region'),
-    )
-    plot.add_tools(HoverTool(tooltips="@Country", show_arrow=False, point_policy='follow_mouse'))
-
-
-    def animate_update():
-        year = slider.value + 1
-        if year > years[-1]:
-            year = years[0]
-        slider.value = year
-
-
-    def slider_update(attrname, old, new):
-        year = slider.value
-        label.text = str(year)
-        source.data = data[year]
-
-    slider = Slider(start=years[0], end=years[-1], value=years[0], step=1, title="Year")
-    slider.on_change('value', slider_update)
-
-    callback_id = None
-
-    def animate():
-        global callback_id
-        if button.label == '► Play':
-            button.label = '❚❚ Pause'
-            callback_id = curdoc().add_periodic_callback(animate_update, 200)
-        else:
-            button.label = '► Play'
-            curdoc().remove_periodic_callback(callback_id)
-
-    button = Button(label='► Play', width=60)
-    button.on_click(animate)
-
-    layout = layout([
-        [plot],
-        [slider, button],
-    ], sizing_mode='scale_width')
-
-    curdoc().add_root(layout)
-    curdoc().title = "Gapminder"
-
-def wordSim(listWords):
-    warnings.filterwarnings(action = 'ignore')
 
 
 if __name__ == '__main__':
