@@ -1,4 +1,4 @@
--- pull difference in times OG post and reply
+-- pull difference matched posts & replies with local time not null
 SELECT
 ans.Content AS Ans,
 qs.Content AS OrigQ,
@@ -9,7 +9,8 @@ ans.CreatedBy as ACreated,
 ans.CreatedOn as ACreatedOn,
 ans.LocalTime as ALocalTime,
 qs.CreatedOn as QCreatedOn,
-qs.LocalTime as QLocalTime
+qs.LocalTime as QLocalTime,
+DATEDIFF(mi , qs.LocalTime , ans.LocalTime ) as TDiff
 FROM [Talklife_Data].[dbo].[Talklife_Answer] as ans
 INNER JOIN [Talklife_Data].[dbo].[Talklife_Question] as qs
 ON ans.QuestionId = qs.Id
